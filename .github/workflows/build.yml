@@ -26,7 +26,7 @@ jobs:
       - name: Build executable
         run: |
           py -m pip install pyinstaller
-          pyinstaller --onefile your_script.py
+          pyinstaller --onefile excel-to-html.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
