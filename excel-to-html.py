@@ -45,7 +45,7 @@ class GenerateHtmlThread(QThread):
             html_content += "</body></html>"
 
             file_name = f"{self.folder_name}/contacts_group_{group_index + 1}.html"
-            with open(file_name, "w") as file:
+            with open(file_name, "w", encoding="utf-8") as file:
                 file.write(html_content)
 
             progress = int((group_index + 1) / total_groups * 100)
