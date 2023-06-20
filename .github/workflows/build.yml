@@ -41,3 +41,4 @@ jobs:
         with: 
           artifacts: "dist\excel-to-html.exe"
           commit: ${{ github.sha }}
+          tag: ${{ github.sha }}
