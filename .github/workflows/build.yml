@@ -35,7 +35,7 @@ jobs:
           path: dist\excel-to-html.exe
 
       - name: Create Release
-      - uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with: 
