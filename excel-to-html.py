@@ -26,7 +26,17 @@ class GenerateHtmlThread(QThread):
 
         for group_index, group_data in enumerate(groups):
             html_content = "<html><body>"
-
+            html_content+="""
+                <table>
+                    <tr>
+                        <tr>
+                         <th> Index </th>
+                         <th> Name </th>
+                         <th> Call </th>
+                         <th> Message </th>
+                         <th> WhatsApp </th>
+                    </tr>
+            """
             for index, row in group_data.iterrows():
                 name = row[self.name_column_index - 1]
                 phone_number = row[self.phone_column_index - 1]
@@ -35,13 +45,15 @@ class GenerateHtmlThread(QThread):
                 message_link = f"<a href='sms:{phone_number}'>Message</a>"
                 whatsapp_link = f"<a href='https://api.whatsapp.com/send?phone={phone_number}'>WhatsApp</a>"
 
-                html_content += f"<p><b>Index:</b> {index}</p>"
-                html_content += f"<p><b>Name:</b> {name}</p>"
-                html_content += f"<p><b>Call:</b> {call_link}</p>"
-                html_content += f"<p><b>Message:</b> {message_link}</p>"
-                html_content += f"<p><b>WhatsApp:</b> {whatsapp_link}</p>"
-                html_content += "<hr>"
+                html_content += "<tr>"
+                html_content += f"<td>{index+1}</td>"
+                html_content += f"<td>{name}</td>"
+                html_content += f"<td>{call_link}</td>"
+                html_content += f"<td>{message_link}</td>"
+                html_content += f"<td>{whatsapp_link}</td>"
+                html_content += "</tr>"
 
+            html_content += "</table>"
             html_content += "</body></html>"
 
             file_name = f"{self.folder_name}/contacts_group_{group_index + 1}.html"
