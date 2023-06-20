@@ -1,4 +1,4 @@
-name: Build Executable
+name: Build Executable and Publish Release
 
 on:
   push:
@@ -33,3 +33,16 @@ jobs:
         with:
           name: excel-to-html
           path: dist\excel-to-html.exe
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            This is an automatically generated release for the build number ${{ github.run_number }}.
+          draft: false
+          prerelease: false
+          files: dist\excel-to-html.exe
