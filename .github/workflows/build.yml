@@ -37,16 +37,20 @@ jobs:
           name: excel-to-html
           path: dist\excel-to-html.exe
 
-      - name: Create Release
-        uses: actions/create-release@v1
+      - name: Get latest release
+        id: get_latest_release
+        run: |
+          release_id=$(curl -s https://api.github.com/repos/Aakarshit-Sharma19/excel-to-html/releases/latest | jq -r '.id')
+          echo "::set-output name=release_id::$release_id"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.run_number }}
-          release_name: Release v${{ github.run_number }}
-          body: |
-            This is an automatically generated release for the build number ${{ github.run_number }}.
-          draft: false
-          prerelease: false
-          files: dist\excel-to-html.exe
 
+      - name: Upload artifact to release
+        uses: actions/upload-release-asset@v1
+        with:
+          asset_path: dist\excel-to-html.exe
+          asset_name: excel-to-html.exe
+          asset_content_type: application/octet-stream
+          upload_url: ${{ steps.get_latest_release.outputs.release_id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
