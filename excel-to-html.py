@@ -38,9 +38,8 @@ class GenerateHtmlThread(QThread):
                     </tr>
             """
             for index, row in group_data.iterrows():
-                name = row[self.name_column_index - 1]
-                phone_number = row[self.phone_column_index - 1]
-
+                name: str = row[self.name_column_index - 1]
+                phone_number: int = int(float(row[self.phone_column_index - 1]))
                 call_link = f"<a href='tel:{phone_number}'>Call</a>"
                 message_link = f"<a href='sms:{phone_number}'>Message</a>"
                 whatsapp_link = f"<a href='https://api.whatsapp.com/send?phone={phone_number}'>WhatsApp</a>"
