@@ -40,7 +40,7 @@ jobs:
       - name: Get latest release
         id: get_latest_release
         run: |
-          $latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/<username>/<repository>/releases/latest" -Headers @{Authorization = "Bearer $env:GITHUB_TOKEN"}
+          $latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/Aakarshit-Sharma19/excel-to-html/releases/latest" -Headers @{Authorization = "Bearer $env:GITHUB_TOKEN"}
           $releaseId = $latestRelease.id
           echo "##vso[task.setvariable variable=release_id]$releaseId"
         env:
