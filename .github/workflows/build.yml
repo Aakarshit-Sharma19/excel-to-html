@@ -30,12 +30,14 @@ jobs:
         run: |
           py -m pip install pyinstaller
           pyinstaller --onefile --noconsole excel-to-html.py
+          pyinstaller --onefile --name excel-to-html-cmd excel-to-html.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
           name: excel-to-html
-          path: dist\excel-to-html.exe
+          path: dist\excel-to-html*.exe
+
 
       - name: Get latest release
         id: get_latest_release
