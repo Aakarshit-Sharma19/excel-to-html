@@ -1,16 +1,25 @@
 import sys
-import pandas as pd
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QFileDialog
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from pathlib import Path
 import os
 import shutil
 import webbrowser
+import logging
+import tempfile
+import pandas as pd
+
+
+# Configure the logger
+log_filename = os.path.join(tempfile.gettempdir(), "conversion.log")
+os.remove(log_filename)
+logging.basicConfig(filename=log_filename, level=logging.INFO)
 
 
 class GenerateHtmlThread(QThread):
     progress_updated = pyqtSignal(int, str)
     finished = pyqtSignal()
+    errored = pyqtSignal(str)
 
     def __init__(self, folder_name, data, name_column_index, phone_column_index, group_size=1000):
         super().__init__()
@@ -21,50 +30,66 @@ class GenerateHtmlThread(QThread):
         self.group_size = group_size
 
     def run(self):
-        total_groups = len(self.data) // self.group_size
-        groups = [self.data[i:i + self.group_size] for i in range(0, len(self.data), self.group_size)]
+        try:
+            logging.info('-'*100+'\nNew Conversion Starting')
+            total_groups = len(self.data) // self.group_size
+            groups = [self.data[i:i + self.group_size] for i in range(0, len(self.data), self.group_size)]
 
-        for group_index, group_data in enumerate(groups):
-            html_content = "<html><body>"
-            html_content+="""
-                <table>
-                    <tr>
+            for group_index, group_data in enumerate(groups):
+                html_content = "<html><body>"
+                html_content += """
+                    <table>
                         <tr>
-                         <th> Index </th>
-                         <th> Name </th>
-                         <th> Call </th>
-                         <th> Message </th>
-                         <th> WhatsApp </th>
-                    </tr>
-            """
-            for index, row in group_data.iterrows():
-                name: str = row[self.name_column_index - 1]
-                phone_number: int = int(float(row[self.phone_column_index - 1]))
-                call_link = f"<a href='tel:{phone_number}'>Call</a>"
-                message_link = f"<a href='sms:{phone_number}'>Message</a>"
-                whatsapp_link = f"<a href='https://api.whatsapp.com/send?phone={phone_number}'>WhatsApp</a>"
+                            <tr>
+                            <th> Index </th>
+                            <th> Name </th>
+                            <th> Call </th>
+                            <th> Message </th>
+                            <th> WhatsApp </th>
+                        </tr>
+                """
+                for index, row in group_data.iterrows():
+                    try:
+                        name: str = row[self.name_column_index - 1]
+                        phone_number: int = int(float(row[self.phone_column_index - 1]))
+                        call_link = f"<a href='tel:{phone_number}'>Call</a>"
+                        message_link = f"<a href='sms:{phone_number}'>Message</a>"
+                        whatsapp_link = f"<a href='https://api.whatsapp.com/send?phone={phone_number}'>WhatsApp</a>"
 
-                html_content += "<tr>"
-                html_content += f"<td>{index+1}</td>"
-                html_content += f"<td>{name}</td>"
-                html_content += f"<td>{call_link}</td>"
-                html_content += f"<td>{message_link}</td>"
-                html_content += f"<td>{whatsapp_link}</td>"
-                html_content += "</tr>"
+                        html_content += "<tr>"
+                        html_content += f"<td>{index + 1}</td>"
+                        html_content += f"<td>{name}</td>"
+                        html_content += f"<td>{call_link}</td>"
+                        html_content += f"<td>{message_link}</td>"
+                        html_content += f"<td>{whatsapp_link}</td>"
+                        html_content += "</tr>"
+                    except:
+                        msg = f"Error while generating HTML file on row {index}\nCheck column {self.name_column_index - 1} and {self.phone_column_index - 1}"
+                        msg+=f'. Values: {row[self.name_column_index - 1]} {row[self.phone_column_index - 1]} (nan means not a number)'
+                        logging.exception(msg)
+                        self.errored.emit(msg)
+                        webbrowser.open(log_filename)  # Open the log file on exception
+                        return
+                html_content += "</table>"
+                html_content += "</body></html>"
 
-            html_content += "</table>"
-            html_content += "</body></html>"
+                file_name = f"{self.folder_name}/contacts_group_{group_index + 1}.html"
+                with open(file_name, "w", encoding="utf-8") as file:
+                    file.write(html_content)
+                logging.info(f"Generated HTML file: {file_name}")
+            
+                progress = int((group_index + 1) / total_groups * 100)
+                self.progress_updated.emit(progress, file_name)
 
-            file_name = f"{self.folder_name}/contacts_group_{group_index + 1}.html"
-            with open(file_name, "w", encoding="utf-8") as file:
-                file.write(html_content)
-
-            progress = int((group_index + 1) / total_groups * 100)
-            self.progress_updated.emit(progress, file_name)
-
-        self.finished.emit()
-
-
+            self.finished.emit()
+        except Exception as e:
+            msg = f"Error while generating HTML file, check columns and file.\nError: {e}"
+            logging.exception(msg)
+            self.errored.emit(msg)
+            webbrowser.open(log_filename)  # Open the log file on exception
+            
+            return
+        
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -142,15 +167,22 @@ class MainWindow(QWidget):
             self.output_lineedit.setText(output_path)
 
     def convert_excel_to_html(self):
+
+        self.progress_label.setText("Conversion starting...")
+        self.progress_label.setStyleSheet("color: blue")
+        app.processEvents()
+
         self.file_path = self.file_lineedit.text()
         self.name_column_index = int(self.name_lineedit.text())
         self.phone_column_index = int(self.phone_lineedit.text())
         self.output_path = self.output_lineedit.text()
-
         try:
+            
             data = pd.read_excel(self.file_path)
         except Exception as e:
-            print(f"Error: {e}")
+            logging.exception(f"Error while reading Excel file: {self.file_path}\nError: {e}")
+            webbrowser.open(log_filename)
+            self.set_error_message('Issue with file. Check logs')
             return
 
         folder_name = Path(self.file_path).name + '_output'
@@ -163,13 +195,13 @@ class MainWindow(QWidget):
         )
         self.generate_html_thread.progress_updated.connect(self.update_progress)
         self.generate_html_thread.finished.connect(self.html_generation_completed)
+        self.generate_html_thread.errored.connect(self.set_error_message)
         self.generate_html_thread.start()
 
         self.convert_button.setEnabled(False)
-        self.progress_label.setText("Converting...")
-        self.progress_label.setStyleSheet("color: blue")
 
-    def update_progress(self, progress, file_name):
+
+    def update_progress(self, progress):
         self.progress_label.setText(f"Generating HTML: {progress}%")
 
     def html_generation_completed(self):
@@ -181,6 +213,10 @@ class MainWindow(QWidget):
         output_folder = os.path.join(self.output_path, folder_name) # type: ignore
         webbrowser.open(f"{output_folder}/contacts_group_1.html")
 
+    def set_error_message(self, msg):
+        self.progress_label.setText(msg)
+        self.progress_label.setStyleSheet('color: red')
+        self.convert_button.setEnabled(True)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
